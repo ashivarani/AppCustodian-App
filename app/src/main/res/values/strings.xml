@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">App Custodian</string>
+    <string name="accessibility_service_description">Allows App Custodian to press the \"Force stop\" button on the Settings App Info screen on your behalf, only for the app you select and only while you have App Custodian open. It does not read or transmit any other data.</string>
+</resources>

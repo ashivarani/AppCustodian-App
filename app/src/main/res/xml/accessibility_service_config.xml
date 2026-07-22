@@ -1,10 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+<accessibility-service
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Listen for window state changes (navigating to/from dialogs) and content updates -->
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+
+    <!-- Standard generic feedback type required for utility services -->
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
+
+    <!-- Flags:
+         - flagReportViewIds: populates AccessibilityNodeInfo.viewIdResourceName for ID-based node matching
+         - flagRequestAccessibilityButton: enables handling taps on the floating system accessibility button -->
+    android:accessibilityFlags="flagReportViewIds|flagRequestAccessibilityButton"
+
+    <!-- Permits inspecting the screen node hierarchy to detect button states and dialog text -->
     android:canRetrieveWindowContent="true"
+
+    <!-- User-facing description displayed in Settings > Accessibility before enabling the service -->
     android:description="@string/accessibility_service_description"
+
+    <!-- Minimum delay (ms) between dispatching accessibility events to prevent UI lag -->
     android:notificationTimeout="100"
+
+    <!-- Scope restriction: limits event delivery strictly to the system Settings app for privacy -->
     android:packageNames="com.android.settings"
-    android:settingsActivity="com.appcustodian.app.MainActivity" />
+
+    <!-- Activity launched when tapping "Settings" under this service's entry in system accessibility -->
+    android:settingsActivity="com.appcustodian.app.MainActivity" >
+    </accessibility-service>

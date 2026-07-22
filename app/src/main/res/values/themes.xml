@@ -1,3 +1,4 @@
 <resources>
+    <!-- Base Application Theme using Material 3 Light with NoActionBar -->
     <style name="Theme.AppCustodian" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

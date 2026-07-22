@@ -3,19 +3,24 @@ package com.appcustodian.app.data.model
 import android.graphics.drawable.Drawable
 
 /**
- * Immutable UI model for one installed application.
+ * Represents an installed application for UI display.
  */
 data class AppInfo(
     val packageName: String,
     val appName: String,
     val icon: Drawable?,
     val isSystemApp: Boolean,
+    /**
+     * True if the app has a launchable MAIN/LAUNCHER activity.
+     * System components without one are treated as background services,
+     * disabling the "Open" action in the UI.
+     */
+    val hasLauncherActivity: Boolean = true,
     val lastUsedTimeMillis: Long = 0L
 )
 
 /**
- * Result of an attempted force-stop automation run, surfaced from the
- * Accessibility Service back up to the UI layer.
+ * Outcome of an automated force-stop operation performed by the Accessibility Service.
  */
 sealed class ForceStopResult {
     data class Success(val packageName: String) : ForceStopResult()

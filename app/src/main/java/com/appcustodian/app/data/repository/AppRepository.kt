@@ -12,12 +12,8 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
- * A handful of well-known packages where the system disables the "Force stop"
- * button entirely (core OS / persistent processes). We hide these from the list
- * rather than let the user tap them and land on a dead-end screen.
- *
- * This list is a best-effort heuristic, not something Android exposes via API —
- * OEMs vary, so treat it as a starting point you may need to extend per device.
+ * Core system packages where "Force stop" is disabled by Android.
+ * Excluded to prevent landing the user on un-actionable settings screens.
  */
 private val PROTECTED_PACKAGES = setOf(
     "android",
@@ -27,10 +23,17 @@ private val PROTECTED_PACKAGES = setOf(
     "com.android.shell"
 )
 
+/**
+ * Repository for querying installed applications and usage history.
+ */
 class AppRepository(private val context: Context) {
 
     private val packageManager: PackageManager = context.packageManager
 
+    /**
+     * Retrieves installed apps sorted by last used time (if usage access is granted),
+     * falling back to alphabetical sorting.
+     */
     suspend fun getInstalledApps(includeSystemApps: Boolean): List<AppInfo> =
         withContext(Dispatchers.Default) {
             val usageMap = if (PermissionUtils.hasUsageAccess(context)) getUsageMap() else emptyMap()
@@ -49,6 +52,8 @@ class AppRepository(private val context: Context) {
                         appName = app.loadLabel(packageManager).toString(),
                         icon = runCatching { app.loadIcon(packageManager) }.getOrNull(),
                         isSystemApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                        hasLauncherActivity =
+                            packageManager.getLaunchIntentForPackage(app.packageName) != null,
                         lastUsedTimeMillis = usageMap[app.packageName] ?: 0L
                     )
                 }
@@ -59,6 +64,9 @@ class AppRepository(private val context: Context) {
                 .toList()
         }
 
+    /**
+     * Queries last used timestamps for installed apps over the past 30 days.
+     */
     private fun getUsageMap(): Map<String, Long> {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val end = System.currentTimeMillis()
@@ -67,6 +75,17 @@ class AppRepository(private val context: Context) {
             .associate { it.packageName to it.lastTimeUsed }
     }
 
+    /**
+     * Creates a launcher intent for [packageName] configured for a clean cold start.
+     */
     fun getLaunchIntent(packageName: String): Intent? =
-        packageManager.getLaunchIntentForPackage(packageName)
+        packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            // Ensure proper task flags for launching outside an Activity
+            // and forcing a fresh process launch post-force-stop.
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_CLEAR_TASK
+            )
+        }
 }

@@ -1,65 +1,129 @@
-# App Custodian
+# AppCustodian App
 
-Android app (Kotlin, Jetpack Compose, MVVM) that lists your installed apps in one
-screen and lets you force-stop or reopen any of them with one tap.
+An Android utility app (Kotlin, Jetpack Compose, MVVM) for viewing installed
+applications and streamlining the manual force-stop workflow through Accessibility
+Service–assisted monitoring.
 
-Package: `com.appcustodian.app` · minSdk 26 · Compose + Material3
+**Package:** `com.appcustodian.app`
+**Minimum SDK:** 26
+**Compile / Target SDK:** 36
+**UI Toolkit:** Jetpack Compose, Material 3
+**Version:** `0.1.0-Alpha01`
 
-## How force-stop actually works here (read this first)
+---
 
-Since Android 5.0, **no normal app can silently force-stop another app** —
-`ActivityManager.forceStopPackage()` requires a signature-level permission only
-system/priv-app installs get. That applies to every app on the Play Store today,
-including "task killer" apps.
+## Overview
 
-This app uses the same technique those Play Store apps use:
+Since Android 5.0, third-party applications cannot programmatically force-stop
+other applications — `ActivityManager.forceStopPackage()` requires a
+signature-level permission restricted to system and privileged (priv-app)
+installs. This restriction applies uniformly across the Android ecosystem,
+including all "task killer" applications distributed via the Play Store.
 
-1. It opens the target app's **Settings → App Info** screen for you.
-2. An **Accessibility Service** (which you enable once, manually, in Settings)
-   finds the real "Force stop" button on that screen and presses it — and
-   presses "OK" on the confirmation dialog that follows.
-3. The result (success/failure) is reported back to the app, which shows a
-   popup and offers to reopen the app.
+App Custodian does not attempt to bypass this restriction. Instead, it
+streamlines the standard manual force-stop procedure and provides automated
+feedback on its outcome, using an Accessibility Service in a strictly
+observational capacity.
 
-It is **not** a hidden API and **not** root — it's UI automation through a
-permission you explicitly grant, scoped (via `accessibility_service_config.xml`)
-to only look at the Settings app's screens.
+### Force-Stop Workflow
 
-### Known limitations (be aware before relying on this)
+1. The user selects an application from the list and chooses **Force Stop**.
+2. App Custodian opens the corresponding **Settings → App Info** screen.
+3. The user manually taps **Force Stop** and confirms via the system dialog.
+4. An Accessibility Service, enabled once by the user in system settings,
+   monitors the App Info screen for changes in the Force Stop control's state.
+5. Upon detecting a conclusive outcome, the service returns the user to App
+   Custodian and reports the result via an in-app dialog and system
+   notification, including an option to relaunch the application on success.
 
-- **Button text varies by OEM/Android version.** `ForceStopAccessibilityService.kt`
-  currently matches the stock/Pixel English strings ("Force stop", "OK"). Samsung
-  OneUI, MIUI, ColorOS, and other locales may use different text or layouts —
-  you'll need to extend `forceStopLabels` / `confirmLabels` and retest per device.
-- **Protected system apps** (Settings itself, SystemUI, Phone, Shell, and a few
-  others) have the Force Stop button greyed out or hidden by the OS — the app
-  filters the most obvious ones out of the list (`PROTECTED_PACKAGES` in
-  `AppRepository.kt`), but that list is a heuristic, not something Android
-  exposes via API. If a button turns out to be disabled, the service reports a
-  `Failed` result after an 8-second timeout rather than hanging.
-- **Android version updates can change the Settings UI**, which may break the
-  node-matching logic until the labels/hierarchy are updated.
-- **"Running processes"**: Android also blocks apps from seeing other apps'
-  live process list since Lollipop, so this app lists *installed* apps
-  (optionally sorted by last-used time via Usage Access), not a live process
-  table — there's no public API left for that.
+The Accessibility Service does not perform any click, tap, or button-press
+actions. It is scoped exclusively to the system Settings package
+(`android:packageNames="com.android.settings"`) and is armed only after an
+explicit user-initiated force-stop request for a specific package.
 
-## Permissions used
+### Outcome Detection Logic
 
-| Permission                                     | Why                                                                  |
-|------------------------------------------------|----------------------------------------------------------------------|
-| `QUERY_ALL_PACKAGES`                           | To list all installed apps, not just ones you've launched via intent |
-| `PACKAGE_USAGE_STATS` (optional, user-granted) | To sort apps by "recently used" — declines gracefully if not granted |
-| Accessibility Service (user-enabled)           | To press Force Stop / OK on the Settings screen                      |
+`ForceStopAccessibilityService` arms itself with a target package immediately
+before the Settings screen opens, then polls the active window at a fixed
+500ms interval (following an initial settling period) for up to 60 seconds:
 
-## Build
+| Outcome              | Condition                                                                     |
+|----------------------|-------------------------------------------------------------------------------|
+| Success              | The Force Stop button or its confirmation dialog is no longer present.        |
+| Failed — Disabled    | The button remains visible but disabled across two or more consecutive polls. |
+| Failed — Not Present | No Force Stop control is found on an otherwise fully-loaded App Info screen.  |
+| Timeout              | No conclusive state is reached within 60 seconds.                             |
 
-Open the `AppCustodian/` folder in Android Studio (Koala+) and Sync Gradle, or:
+In all cases, the service issues a system Back action (or relaunches App
+Custodian if unavailable) and posts a corresponding result notification.
+
+---
+
+## Features
+
+- **Application listing** — displays all installed applications, with an
+  optional toggle to exclude system apps. Sorted by last-used time when Usage
+  Access is granted; otherwise sorted alphabetically.
+- **Search** — live filtering by application name or package identifier.
+- **Force Stop / Open actions** — presented via a per-app action sheet. The
+  Open action performs a clean relaunch using
+  `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TOP | FLAG_ACTIVITY_CLEAR_TASK`;
+  applications without a launcher activity are handled gracefully.
+- **Permission prompting** — surfaces an Accessibility Service enablement
+  prompt when required.
+- **Result reporting** — in-app dialog and system notification summarizing
+  the outcome of each force-stop attempt, with a failure reason where
+  applicable.
+
+---
+
+## Known Limitations
+
+- **OEM and locale variance.** The service matches Force Stop and confirmation
+  controls first by AOSP resource ID (`com.android.settings:id/right_button`
+  for API ~26–29, `com.android.settings:id/button1_positive` for API ~30+),
+  falling back to English-language text matching ("Force stop", "OK"). OEM
+  skins (Samsung One UI, MIUI, ColorOS) and non-English locales may require
+  additional label or ID mappings in `ForceStopAccessibilityService.kt`.
+- **Protected package filtering is heuristic.** A fixed set of known protected
+  packages (`android`, `com.android.systemui`, `com.android.settings`,
+  `com.android.phone`, `com.android.shell`) is excluded from the app list in
+  `AppRepository.kt`. This list is not exhaustive; other protected or
+  restricted applications may still appear and will report a disabled or
+  not-present outcome.
+- **Platform UI dependency.** Changes to the Settings app's UI across Android
+  versions may affect node-matching accuracy until updated.
+- **No live process enumeration.** Android has restricted visibility into
+  other applications' running process state since Android 5.0. The
+  application list reflects installed packages, optionally ordered by last
+  usage, rather than a live process table.
+
+---
+
+## Permissions
+
+| Permission                           | Purpose                                                                                     |
+|--------------------------------------|---------------------------------------------------------------------------------------------|
+| `QUERY_ALL_PACKAGES`                 | Enumerate all installed applications, not limited to those reachable via intent resolution. |
+| `PACKAGE_USAGE_STATS` (optional)     | Sort applications by recent usage; falls back to alphabetical sorting if not granted.       |
+| `POST_NOTIFICATIONS` (Android 13+)   | Deliver force-stop result notifications.                                                    |
+| Accessibility Service (user-enabled) | Observe the Settings App Info screen to detect force-stop outcomes. No input is simulated.  |
+
+---
+
+## Building
+
+This repository currently contains the `app/` module only; a root
+`settings.gradle.kts` and Gradle wrapper are not yet included. Once integrated
+into a complete project, open the module in Android Studio (Koala or later),
+sync Gradle, and build via:
 
 ```
 ./gradlew assembleDebug
 ```
 
-On first launch, tap any app → **Force stop** → you'll be prompted once to turn
-on the Accessibility Service. After that, force-stop requests happen with one
-tap per app, no manual navigation needed.
+Release builds reference a `key.properties` file at the project root for
+signing configuration. In its absence, `assembleRelease` produces an unsigned
+APK and logs a warning; code shrinking and resource optimization
+(`isMinifyEnabled`, `isShrinkResources`) are enabled for release builds
+regardless of signing state.

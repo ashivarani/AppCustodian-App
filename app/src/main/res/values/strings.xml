@@ -1,4 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">App Custodian</string>
-    <string name="accessibility_service_description">Allows App Custodian to press the \"Force stop\" button on the Settings App Info screen on your behalf, only for the app you select and only while you have App Custodian open. It does not read or transmit any other data.</string>
+    <!-- Application Name -->
+    <string name="app_name">AppCustodian App</string>
+
+    <!-- Accessibility Service System Settings Description -->
+    <string name="accessibility_service_description">By turning this on, you are granting App Custodian permission to view content within the Settings app: specifically, to detect when you tap \"Force stop\" and confirm it on the App Info screen for the app you selected, and to notice if that option isn\'t available (for example, if the app is protected or already stopped). App Custodian does not press or click anything on your behalf \u2014 you always tap \"Force stop\" and confirm it yourself. This access is limited to the Settings app\'s screens only \u2014 App Custodian does not read, record, or transmit content from any other app or screen, and it only watches after you have directly requested a force stop. You may withdraw this permission at any time from Settings > Accessibility. Continuing past this screen and enabling the service constitutes your acceptance of this access.</string>
 </resources>

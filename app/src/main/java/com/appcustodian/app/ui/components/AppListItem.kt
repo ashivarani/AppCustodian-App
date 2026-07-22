@@ -19,6 +19,34 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.appcustodian.app.data.model.AppInfo
 
+/**
+ * Builds a descriptive subtitle for an application based on its type and launcher status.
+ *
+ * System packages without launcher activities are labeled as "System service", while user
+ * background components without entry points are labeled as "Background component".
+ *
+ * @param app The [AppInfo] model containing package details.
+ * @return A formatted subtitle string combining app category and package name.
+ */
+private fun subtitleFor(app: AppInfo): String {
+    val kind = when {
+        app.isSystemApp && !app.hasLauncherActivity -> "System service"
+        app.isSystemApp -> "System app"
+        !app.hasLauncherActivity -> "Background component"
+        else -> null
+    }
+    return if (kind != null) "$kind · ${app.packageName}" else app.packageName
+}
+
+/**
+ * Renders a single row item in the main installed application list.
+ *
+ * Displays the application's icon, title, and detailed subtitle, wrapped in a
+ * rounded clickable surface.
+ *
+ * @param app The [AppInfo] model representing the installed application.
+ * @param onClick Callback triggered when the user taps the item row.
+ */
 @Composable
 fun AppListItem(app: AppInfo, onClick: () -> Unit) {
     Row(
@@ -29,6 +57,7 @@ fun AppListItem(app: AppInfo, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // App icon container box with fallback to default Android icon
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -36,13 +65,16 @@ fun AppListItem(app: AppInfo, onClick: () -> Unit) {
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
+            // Safe conversion of app Drawable to ImageBitmap
             val bitmap: ImageBitmap? = app.icon?.let { drawable ->
                 try {
                     drawable.toBitmap(132, 132).asImageBitmap()
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }
+
+            // Render custom app icon if valid, otherwise show Android system icon
             if (bitmap != null) {
                 Image(bitmap = bitmap, contentDescription = app.appName)
             } else {
@@ -52,10 +84,15 @@ fun AppListItem(app: AppInfo, onClick: () -> Unit) {
 
         Spacer(modifier = Modifier.width(14.dp))
 
+        // Application title and package info column
         Column(modifier = Modifier.weight(1f)) {
-            Text(app.appName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = if (app.isSystemApp) "System app · ${app.packageName}" else app.packageName,
+                text = app.appName,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = subtitleFor(app),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

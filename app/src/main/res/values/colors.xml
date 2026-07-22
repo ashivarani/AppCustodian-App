@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- Brand Accent & Destructive Colors -->
+    <color name="primary">#FF3B5BFE</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="danger">#FFD3352E</color>
+
+    <!-- Surfaces & Backgrounds -->
+    <color name="background">#FFF7F8FC</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="header_background">#FF1E2749</color>
+    <color name="on_header_background">#FFFFFFFF</color>
+    <color name="ic_launcher_background">#131313</color>
+
+    <!-- Text & Variant Utilities -->
+    <color name="on_surface_variant">#FF6B7280</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
